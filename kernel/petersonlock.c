@@ -9,40 +9,27 @@
 #include "petersonlock.h"
 
 struct petersonlock locks[NPETERSONLOCKS];
-struct spinlock *lk;
 int lastcreatedindex = 0;
-
-void initpetersonlock()
-{
-    initlock(&lk, "peterson lock");
-}
 
 // Creates a new Peterson lock and returns a unique identifier for the lock.
 // In case the lock cannot be created, returns -1.
 int peterson_create(void)
 {
-    acquire(lk);
+    // acquire(lk); replace with __sync calls
     int i;
 
-    if (lastcreatedindex < NPETERSONLOCKS)
+    for (i = 0; i < NPETERSONLOCKS; i++)
     {
-        locks[lastcreatedindex] = newlock;
-    }
-    else
-    {
-        for (i = 0; i < NPETERSONLOCKS; i++)
+        if (locks[i].alive == 0)
         {
-            if (locks[i].alive == 0)
-            {
-                locks[i].alive = 1;
+            locks[i].alive = 1;
 
-                release(lk);
-                return i;
-            }
+            // release(lk); replace with __sync calls
+            return i;
         }
     }
 
-    release(lk);
+    // release(lk); replace with __sync calls
     return -1;
     // for lock in lock
     // if alive = false
@@ -83,21 +70,29 @@ int peterson_acquire(int lock_id, int role)
     return 0;
 }
 
+// Takes a lock identifier and the role of the process (0 or 1) and releases
+// the lock. The other role may not acquire the lock until it is released by
+// this call. Returns 0 on success and -1 on error (e.g., the lock identifier
+// or the role is invalid).
 int peterson_release(int lock_id, int role) {}
 
+// Deletes the lock with the given identifier. Once this function returns,
+// the lock identifier is invalid and neither role can acquire the lock. Either
+// role can call this function. Returns 0 on success and -1 on error (e.g.,
+// the lock identifier is invalid).
 int peterson_destroy(int lock_id) {}
 
 int getlock(int lock_id, struct petersonlock *lock)
 {
-    acquire(lk);
+    // acquire(lk); replace with __sync calls
     if (locks[lock_id].alive == 0)
     {
         locks[lock_id].alive = 1;
 
-        release(lk);
+        // release(lk); replace with __sync calls
         lock = &locks[lock_id];
         return 0;
     }
-    release(lk);
+    // release(lk); replace with __sync calls
     return -1;
 }
