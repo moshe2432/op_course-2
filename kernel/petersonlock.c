@@ -52,34 +52,50 @@ struct petersonlock locks[NPETERSONLOCKS];
 // In case the lock cannot be created, returns -1.
 int peterson_create(void)
 {
-
-    // ensure single creation at a time
-    while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
-        ;
-
-    __sync_synchronize();
-    
-    int i;
-    for (i = 0; i < NPETERSONLOCKS; i++)
+    for (int i = 0; i < NPETERSONLOCKS; i++)
     {
-        if (locks[i].alive == 0)
+        if(__sync_lock_test_and_set(&locks[i].alive, 1) == 0)
         {
-            locks[i].alive = 1;
-            
+            locks[i].barrier = 0;
+            locks[i].interested[0] = 0;
+            locks[i].interested[1] = 0;
+            locks[i].pid[0] = 0;
+            locks[i].pid[1] = 0;
             // ensure the change is visible to all cpus before releasing
             __sync_synchronize();
-
-            __sync_lock_release(list_lock_in_question???);
-
             return i;
         }
     }
-    
-    __sync_synchronize();
-
-    __sync_lock_release(list_lock_in_question???);
-    
     return -1;
+    
+
+    // // ensure single creation at a time
+    // while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
+    //     ;
+
+    // __sync_synchronize();
+    
+    // int i;
+    // for (i = 0; i < NPETERSONLOCKS; i++)
+    // {
+    //     if (locks[i].alive == 0)
+    //     {
+    //         locks[i].alive = 1;
+            
+    //         // ensure the change is visible to all cpus before releasing
+    //         __sync_synchronize();
+
+    //         __sync_lock_release(list_lock_in_question???);
+
+    //         return i;
+    //     }
+    // }
+    
+    // __sync_synchronize();
+
+    // __sync_lock_release(list_lock_in_question???);
+    
+    // return -1;
 }
 
 // Takes a lock identifier and the role of the process (0 or 1) and attempts
@@ -91,18 +107,21 @@ int peterson_create(void)
 int peterson_acquire(int lock_id, int role)
 {
 
-
-    struct petersonlock *lock;
-    if (getlock(lock_id, &lock) < 0)
+    struct petersonlock *lock = &locks[lock_id];
+    if (lock->alive == 0 || role < 0 || role > 1)
     {
         // if error return -1
 
         return -1;
     }
 
-    int other = 1 - role;
+    // ensure all previous pperation are truly coplete before starting the critical section
+    __sync_synchronize();
+
+    lock->pid[role] = myproc()->pid;
     lock->interested[role] = 1;
     lock->barrier = role;
+    int other = 1 - role;
     while (lock->barrier == role &&
            lock->interested[other] == 1)
     {
@@ -111,8 +130,31 @@ int peterson_acquire(int lock_id, int role)
 
     // ensure all previous pperation are truly coplete before starting the critical section
     __sync_synchronize();
-
     return 0;
+
+
+
+    // struct petersonlock *lock;
+    // if (getlock(lock_id, &lock) < 0)
+    // {
+    //     // if error return -1
+
+    //     return -1;
+    // }
+
+    // int other = 1 - role;
+    // lock->interested[role] = 1;
+    // lock->barrier = role;
+    // while (lock->barrier == role &&
+    //        lock->interested[other] == 1)
+    // {
+    //     yield();
+    // }
+
+    // // ensure all previous pperation are truly coplete before starting the critical section
+    // __sync_synchronize();
+
+    // return 0;
 }
 
 // Takes a lock identifier and the role of the process (0 or 1) and releases
@@ -121,20 +163,34 @@ int peterson_acquire(int lock_id, int role)
 // or the role is invalid).
 int peterson_release(int lock_id, int role) {
     
-
-    // ensure all cricitcal section work is truly complete before leaving the critical section
-    __sync_synchronize();
-
-    struct petersonlock *lock;
-    if (getlock(lock_id, &lock) < 0)
+    struct petersonlock *lock = &locks[lock_id];
+    if (lock->alive == 0 || role < 0 || role > 1)
     {
         // if error return -1
 
         return -1;
     }
+    // ensure all previous pperation are truly coplete before starting the critical section
+    __sync_synchronize();
 
     lock->interested[role] = 0;
-    return 0;
+    __sync_synchronize();
+
+    
+    
+    
+    // ensure all cricitcal section work is truly complete before leaving the critical section
+
+    // struct petersonlock *lock;
+    // if (getlock(lock_id, &lock) < 0)
+    // {
+    //     // if error return -1
+
+    //     return -1;
+    // }
+
+    // lock->interested[role] = 0;
+    // return 0;
 }
 
 // Deletes the lock with the given identifier. Once this function returns,
@@ -143,52 +199,62 @@ int peterson_release(int lock_id, int role) {
 // the lock identifier is invalid).
 int peterson_destroy(int lock_id) {
 
-    // ensure single creation at a time
-    while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
-        ;   
+    locks[lock_id].alive = 0;
+    locks[lock_id].barrier = 0;
+    locks[lock_id].interested[0] = 0;
+    locks[lock_id].interested[1] = 0;
 
-    struct petersonlock *lock;
-    if (getlock(lock_id, &lock) < 0)
-    {
-        // if error return -1
-        __sync_lock_release(list_lock_in_question???);
-
-        return -1;
-    }
-
-    if (lock->alive == 0) {
-        __sync_lock_release(list_lock_in_question???);
-
-        return -1;
-    }
-
-    lock->alive = 0;
-
-
-    // ensure the change is visible to all cpus before releasing
     __sync_synchronize();
 
-    __sync_lock_release(list_lock_in_question???);
+    
+    
+    
+    // ensure single creation at a time
+    // while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
+    //     ;   
+
+    // struct petersonlock *lock;
+    // if (getlock(lock_id, &lock) < 0)
+    // {
+    //     // if error return -1
+    //     __sync_lock_release(list_lock_in_question???);
+
+    //     return -1;
+    // }
+
+    // if (lock->alive == 0) {
+    //     __sync_lock_release(list_lock_in_question???);
+
+    //     return -1;
+    // }
+
+    // lock->alive = 0;
 
 
-    return 0;
+    // // ensure the change is visible to all cpus before releasing
+    // __sync_synchronize();
+
+    // __sync_lock_release(list_lock_in_question???);
+
+
+    // return 0;
 }
 
 int getlock(int lock_id, struct petersonlock *lock)
 {
-    __sync_synchronize();
+    // __sync_synchronize();
     
-    while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
-    ;
+    // while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
+    // ;
 
-    if (locks[lock_id].alive == 0)
-    {
-        locks[lock_id].alive = 1;
+    // if (locks[lock_id].alive == 0)
+    // {
+    //     locks[lock_id].alive = 1;
 
         
-        lock = &locks[lock_id];
-        return 0;
-    }
-    // release(lk); replace with __sync calls
-    return -1;
+    //     lock = &locks[lock_id];
+    //     return 0;
+    // }
+    // // release(lk); replace with __sync calls
+    // return -1;
 }
