@@ -93,6 +93,12 @@ extern uint64 sys_dup(void);
 extern uint64 sys_getpid(void);
 extern uint64 sys_sbrk(void);
 extern uint64 sys_sleep(void);
+////////////////
+extern uint64 sys_lock_create(void);
+extern uint64 sys_lock_acquire(void);
+extern uint64 sys_lock_release(void);
+extern uint64 sys_lock_destroy(void);
+////////////////
 extern uint64 sys_uptime(void);
 extern uint64 sys_open(void);
 extern uint64 sys_write(void);
@@ -118,6 +124,12 @@ static uint64 (*syscalls[])(void) = {
 [SYS_getpid]  sys_getpid,
 [SYS_sbrk]    sys_sbrk,
 [SYS_sleep]   sys_sleep,
+//////////////////////////
+[SYS_lock_create] sys_lock_create,
+[SYS_lock_acquire] sys_lock_acquire,
+[SYS_lock_release] sys_lock_release,
+[SYS_lock_destroy] sys_lock_destroy,
+//////////////////////////
 [SYS_uptime]  sys_uptime,
 [SYS_open]    sys_open,
 [SYS_write]   sys_write,

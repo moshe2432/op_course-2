@@ -4,6 +4,7 @@
 #include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "petersonlock.h"
 #include "proc.h"
 
 uint64
@@ -68,6 +69,40 @@ sys_sleep(void)
   return 0;
 }
 
+/////////////////////////////
+uint64
+sys_lock_create(void)
+{
+  return peterson_create();
+}
+
+uint64
+sys_lock_acquire(void)
+{
+  int lock_id, role;
+  argint(0, &lock_id);
+  argint(1, &role);
+  return peterson_acquire(lock_id, role);
+}
+
+uint64
+sys_lock_release(void)
+{
+  int lock_id, role;
+  argint(0, &lock_id);
+  argint(1, &role);
+  return peterson_release(lock_id, role);
+}
+
+uint64
+sys_lock_destroy(void)
+{
+  int lock_id;
+  argint(0, &lock_id);
+  return peterson_destroy(lock_id);
+}
+
+/////////////////////////////
 uint64
 sys_kill(void)
 {

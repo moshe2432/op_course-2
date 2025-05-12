@@ -5,7 +5,6 @@
 #include "param.h"
 #include "memlayout.h"
 #include "proc.h"
-#include "spinlock.h"
 #include "petersonlock.h"
 
 struct petersonlock locks[NPETERSONLOCKS];
@@ -48,6 +47,18 @@ struct petersonlock locks[NPETERSONLOCKS];
 // -------------------------------------------
 // 
 
+void peterson_init(void)
+{
+    for (int i = 0; i < NPETERSONLOCKS; i++)
+    {
+        locks[i].alive = 0;
+        locks[i].barrier = 0;
+        locks[i].interested[0] = 0;
+        locks[i].interested[1] = 0;
+    }
+}
+
+
 // Creates a new Peterson lock and returns a unique identifier for the lock.
 // In case the lock cannot be created, returns -1.
 int peterson_create(void)
@@ -59,8 +70,7 @@ int peterson_create(void)
             locks[i].barrier = 0;
             locks[i].interested[0] = 0;
             locks[i].interested[1] = 0;
-            locks[i].pid[0] = 0;
-            locks[i].pid[1] = 0;
+            
             // ensure the change is visible to all cpus before releasing
             __sync_synchronize();
             return i;
@@ -118,7 +128,7 @@ int peterson_acquire(int lock_id, int role)
     // ensure all previous pperation are truly coplete before starting the critical section
     __sync_synchronize();
 
-    lock->pid[role] = myproc()->pid;
+    
     lock->interested[role] = 1;
     lock->barrier = role;
     int other = 1 - role;

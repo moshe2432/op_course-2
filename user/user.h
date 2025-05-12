@@ -21,6 +21,12 @@ int dup(int);
 int getpid(void);
 char* sbrk(int);
 int sleep(int);
+/////////////
+int peterson_create(void);
+int peterson_acquire(int lock_id, int role);
+int peterson_release(int lock_id, int role);
+int peterson_destroy(int lock_id);
+//////////////
 int uptime(void);
 
 // ulib.c

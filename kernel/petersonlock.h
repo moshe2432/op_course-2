@@ -7,7 +7,7 @@ struct petersonlock
     uint barrier;
     uint interested[2];
     uint alive; //
-    uint pid[2];    // Lock identifier. 
+     
 
     // For debugging:
     char *name;      // Name of lock.
