@@ -125,10 +125,10 @@ static uint64 (*syscalls[])(void) = {
 [SYS_sbrk]    sys_sbrk,
 [SYS_sleep]   sys_sleep,
 //////////////////////////
-[SYS_lock_create] sys_lock_create,
-[SYS_lock_acquire] sys_lock_acquire,
-[SYS_lock_release] sys_lock_release,
-[SYS_lock_destroy] sys_lock_destroy,
+[SYS_peterson_create] sys_lock_create,
+[SYS_peterson_acquire] sys_lock_acquire,
+[SYS_peterson_release] sys_lock_release,
+[SYS_peterson_destroy] sys_lock_destroy,
 //////////////////////////
 [SYS_uptime]  sys_uptime,
 [SYS_open]    sys_open,
