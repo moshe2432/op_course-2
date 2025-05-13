@@ -4,6 +4,7 @@
 #include "defs.h"
 #include "param.h"
 #include "memlayout.h"
+#include "spinlock.h"
 #include "proc.h"
 #include "petersonlock.h"
 
@@ -47,7 +48,7 @@ struct petersonlock locks[NPETERSONLOCKS];
 // -------------------------------------------
 // 
 
-void peterson_init(void)
+int peterson_init(void)
 {
     for (int i = 0; i < NPETERSONLOCKS; i++)
     {
@@ -56,6 +57,7 @@ void peterson_init(void)
         locks[i].interested[0] = 0;
         locks[i].interested[1] = 0;
     }
+    return 0;
 }
 
 
@@ -137,7 +139,7 @@ int peterson_acquire(int lock_id, int role)
     {
         yield();
     }
-
+    lock->locked = 1;
     // ensure all previous pperation are truly coplete before starting the critical section
     __sync_synchronize();
     return 0;
@@ -182,11 +184,11 @@ int peterson_release(int lock_id, int role) {
     }
     // ensure all previous pperation are truly coplete before starting the critical section
     __sync_synchronize();
-
+    lock->locked = 0;
     lock->interested[role] = 0;
     __sync_synchronize();
 
-    
+    return 0;
     
     
     // ensure all cricitcal section work is truly complete before leaving the critical section
@@ -216,7 +218,7 @@ int peterson_destroy(int lock_id) {
 
     __sync_synchronize();
 
-    
+    return 0;
     
     
     // ensure single creation at a time
@@ -252,6 +254,7 @@ int peterson_destroy(int lock_id) {
 
 int getlock(int lock_id, struct petersonlock *lock)
 {
+    return 0;
     // __sync_synchronize();
     
     // while(__sync_lock_test_and_set(list_lock_in_question???, 1) != 0)
