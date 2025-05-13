@@ -141,7 +141,7 @@ int peterson_release(int lock_id, int role)
 int peterson_destroy(int lock_id)
 {
 
-    locks[lock_id].alive = 0;
+    __sync_lock_release(&locks[lock_id].alive);
     locks[lock_id].barrier = 0;
     locks[lock_id].interested[0] = 0;
     locks[lock_id].interested[1] = 0;
