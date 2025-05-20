@@ -26,6 +26,10 @@ int peterson_create(void);
 int peterson_acquire(int lock_id, int role);
 int peterson_release(int lock_id, int role);
 int peterson_destroy(int lock_id);
+
+int tournament_create(int processes);
+int tournament_acquire();
+int tournament_release();
 //////////////
 int uptime(void);
 

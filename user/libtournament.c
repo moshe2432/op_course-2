@@ -2,22 +2,54 @@
 #include "kernel/stat.h"
 #include "kernel/petersonlock.h"
 #include "user/user.h"
-#include "proc.h"
+
 #include <math.h>
 
-struct tournament_node
+int id_counter = 0;
+
+struct tournament_tree
 {
-    struct tournament_node *parent;
-
-    struct tournament_node *right;
-    struct tournament_node *left;
-
-    int lock_id;    // or this
-    int process_id; // or this
-    int index;
+    int id;
+    int num_processes;
+    struct tournament_tree *next;
+    int* treeNodes;
+    int* processes;
 };
 
-struct tournament_node *root;
+struct tournament_tree *trees;
+
+
+
+#define MAX_LEVELS 4  // log2(16)
+
+struct lock_path_entry {
+    int lock_id;
+    int role; // 0 or 1
+};
+
+// Each process holds this:
+struct lock_path_entry path[MAX_LEVELS];
+int path_length = 0;
+
+
+
+
+
+int log2_int(unsigned int x) {
+    int res = 0;
+    while (x >>= 1) {
+        res++;
+    }
+    return res;
+}
+
+int get_role(int index, int L, int l)
+{
+    int role;
+    role = (index & (1 << (L - l - 1))) >> (L - l - 1);
+    return role;
+}
+
 
 // Creates a new tournament tree with the given number of processes.
 // This function accepts the number of processes that will participate in
@@ -29,22 +61,56 @@ struct tournament_node *root;
 // function should return -1, but does not attempt to clean up the tree.
 int tournament_create(int processes)
 {
-    int height;
-    if (processes != 2 && processes != 4 && processes != 8 || processes != 16)
-    {
+    int pid = 0;
+    if (processes != 2 && processes != 4 && processes != 8 && processes != 16)
         return -1;
+
+    int L = log2_int(processes);
+
+    struct tournament_tree *tree = malloc(sizeof(struct tournament_tree));
+    tree->treeNodes = malloc(sizeof(int) * (processes - 1));
+    tree->processes = malloc(sizeof(int) * processes);
+    tree->id = id_counter++;
+    tree->num_processes = processes;
+
+    for (int i = 0; i < processes - 1; i++) {
+        tree->treeNodes[i] = peterson_create();
     }
 
-    height = log2(processes) - 1;
+    for (int i = 1; i < processes; i++) {
+        pid = fork();
+        if (pid < 0) return -1;
 
-    // create root
+        if (pid == 0) {
+            // In child
+            for (int l = 0; l < L; l++) {
+                int parent = (i >> (l+1)) + (1 << (L - l - 1)) - 1;
+                int role = (i >> l) & 1;
+                path[l].lock_id = tree->treeNodes[parent];
+                path[l].role = role;
+            }
+            path_length = L;
+            break;
+        } else {
+            tree->processes[i] = pid;
+        }
+    }
 
-    /// [processes -1] number of lock nodes
-    /// we have [processes] number of leaves and
+    tree->processes[0] = getpid();
+    if(pid !=0)
+    {
+        // In parent
+        for (int l = 0; l < L; l++) {
+            int role = get_role(0, L, l);
+            path[l].lock_id = tree->treeNodes[(1 << (L - l - 1)) - 1];
+            path[l].role = role;
+        }
+        path_length = L;
+    }
 
-    // for height - 1
-
-    return 0;
+    tree->next = trees;
+    trees = tree;
+    return tree->id;
 }
 
 // Attempts to complete the tournament to acquire the lock at the root
@@ -52,88 +118,25 @@ int tournament_create(int processes)
 // assigned to the calling process by tournament_create. Returns 0 on success and -1 on error.
 int tournament_acquire(void)
 {
-    // from the child
-    int process_id, role, index, L, l;
-    struct proc *p = myproc();
-    process_id = p->pid;
 
-    // Find the starting node of the current process (leaf)
-    L = 0;
-    struct tournament_node *current_node = root;
-    // list of nodes to check
-    // number of children to check = 2 ^ L
-    while (current_node->process_id != process_id && current_node != 0)
-    {
-        
-        L++;
-        // BFS
+    for (int i = 0; i < path_length; i++) {
+        peterson_acquire(path[i].lock_id, path[i].role);
     }
-
-    if (current_node == 0)
-        return -1;
-
-    index = current_node->index;
-    l = 0;
-
-    // Play the tournament
-    // Go up a node, try to catch, continue until finished
-
-    while (current_node != 0)
-    {
-        role = get_role(index, L, l);
-        if (current_node->lock_id != 0)
-        {
-            if (peterson_acquire(current_node->lock_id, role) < 0)
-            {
-                printf("Failed to acquire lock\n");
-                exit(1);
-            }
-        }
-
-        if (current_node->parent == 0)
-            return 0;
-
-        current_node = current_node->parent;
-        l++;
-        // sleep
-    }
-    // run bfs until node with same process_id
-    // maybe reverse try to catch the locks
-    // if catch root lock success
-
     return 0;
+    
 }
 
-int get_role(int index, int L, int l)
-{
-    int role;
-    role = (index & (1 << (L - l - 1))) >> (L - l - 1);
-    return role;
-}
 
 // Releases all locks held by the calling process in the reverse order of
 // acquisition. Returns 0 on success and -1 on error.
 int tournament_release(void)
 {
-    // starting from root
-    int process_id;
-    struct proc *p = myproc();
-    process_id = p->pid;
-
-    // Find the starting node of the current process (leaf)
-    struct tournament_node *current_node = root;
-    while (current_node->process_id != process_id && current_node != 0)
-    {
-        // BFS
+    for (int i = path_length - 1; i >= 0; i--) {
+        peterson_release(path[i].lock_id, path[i].role);
     }
-
-    if (current_node == 0)
-        return -1;
-
-    // if (peterson_release(lock_id, role) < 0)
-    // {
-    //     printf("Failed to release lock\n");
-    //     exit(1);
-    // }
     return 0;
+
+ 
 }
+
+
