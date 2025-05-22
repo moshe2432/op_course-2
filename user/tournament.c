@@ -5,17 +5,28 @@
 
  int main(int argc, char *argv[])
  {
-     int id = tournament_create(16);
-     if (id < 0)
-     {
-         printf("Failed to create tournament\n");
-         exit(-1);
-     }
+    int prosNum;
+    printf("argc: %d\n", argc);
+
+    if(argc > 1){
+        prosNum = atoi(argv[1]);
+    }
+    else{
+        prosNum = 16;
+    }
+
+
+    int id = tournament_create(prosNum);
+    if (id < 0)
+    {
+        printf("Failed to create tournament\n");
+        exit(-1);
+    }
  
-     //printf("Tournament created with ID: %d\n", id);
+    //printf("Tournament created with ID: %d\n", id);
  
-     // Acquire the lock
-     if (tournament_acquire() < 0)
+    // Acquire the lock
+    if (tournament_acquire() < 0)
      {
          printf("Failed to acquire lock\n");
          exit(-1);
