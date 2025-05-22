@@ -141,6 +141,29 @@ int tournament_release(void)
     return 0;
 }
 
+int tournament_wait(int id)
+{
+    struct tournament_tree *tree = trees;
+    int pid = getpid();
+    while (tree->id != id)
+    {
+        if (tree->next == 0)
+        {
+            return -1;
+        }
+        tree = tree->next;
+    }
+
+    for (int i = 0; i < tree->num_processes; i++)
+    {
+        if (pid != tree->processes[i])
+        {
+            wait(tree->processes + i);
+        }
+    }
+    return 0;
+}
+
 int tournament_delete(int id)
 {
     struct tournament_tree *tree = trees;

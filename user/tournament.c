@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 
     if (getpid() == pid)
     {
+        tournament_wait(id);
         tournament_delete(id);
     }
 

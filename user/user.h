@@ -31,6 +31,7 @@ int tournament_create(int processes);
 int tournament_acquire();
 int tournament_release();
 int tournament_delete(int id);
+int tournament_wait(int id);
 //////////////
 int uptime(void);
 
